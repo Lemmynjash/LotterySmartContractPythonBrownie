@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.7.0 <0.9.0;
-import "@chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol";
+pragma solidity ^0.6.0;
+
+import "@chainlink/contracts/src/v0.6/interfaces/AggregatorV3Interface.sol";
+import "@chainlink/contracts/src/v0.6/VRFConsumerBase.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-contract Lottery is Ownable {
-    address payable[] public players; // will going to use this to track all the players
+//import "@chainlink/contracts/src/v0.7/interfaces/AggregatorProxyInterface.sol";
 
+contract Lottery is VRFConsumerBase, Ownable {
+    address payable[] public players; // will going to use this to track all the players
+    address payable public recentWinner;
     uint256 public usdEntryFee;
+    uint256 public randomness;
+
     AggregatorV3Interface internal ethToUSDpriceFeed;
     enum LOTTERY_STATE {
         OPEN,
@@ -16,10 +22,21 @@ contract Lottery is Ownable {
 
     LOTTERY_STATE public lottery_state;
 
-    constructor(address _priceFeedAddress) {
+    uint256 public fee;
+    bytes32 public keyhash;
+
+    constructor(
+        address _priceFeedAddress,
+        address _vrfCoordinator,
+        address _link,
+        uint256 _fee,
+        bytes32 _keyhash
+    ) public VRFConsumerBase(_vrfCoordinator, _link) {
         usdEntryFee = 50 * (10**18); //50 USD multiplied by 10 raised to the 18th
         ethToUSDpriceFeed = AggregatorV3Interface(_priceFeedAddress);
         lottery_state = LOTTERY_STATE.CLOSED;
+        fee = _fee;
+        keyhash = _keyhash;
     }
 
     function enter() public payable {
@@ -49,5 +66,28 @@ contract Lottery is Ownable {
         lottery_state = LOTTERY_STATE.OPEN;
     }
 
-    function endLottery() public onlyOwner {}
+    function endLottery() public onlyOwner {
+        lottery_state == LOTTERY_STATE.CALCULATING_WINNER;
+        bytes32 requestId = requestRandomness(keyhash, fee, 0);
+    }
+
+    function fulfillRandomness(bytes32 _requesId, uint256 _randomness)
+        internal
+        override
+    {
+        //put some valid checks
+        require(
+            lottery_state == LOTTERY_STATE.CALCULATING_WINNER,
+            "You are not there yet!!!"
+        );
+        require(_randomness > 0, "Random not found");
+
+        uint256 indexOfWinner = _randomness % players.length;
+        recentWinner = players[indexOfWinner]; // we have the winner!!
+        recentWinner.transfer(address(this).balance); //transffering all the money to the random winner!!
+        //Reset Lottery!!
+        players = new address payable[](0);
+        lottery_state = LOTTERY_STATE.CLOSED;
+        randomness = _randomness;
+    } //this will override VRFConsumerBase fulfillRandomness function!
 }
