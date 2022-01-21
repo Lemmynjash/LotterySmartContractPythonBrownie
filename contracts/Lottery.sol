@@ -25,6 +25,8 @@ contract Lottery is VRFConsumerBase, Ownable {
     uint256 public fee;
     bytes32 public keyhash;
 
+    //event RequestedRandomness(bytes32 requestId);
+
     constructor(
         address _priceFeedAddress,
         address _vrfCoordinator,
@@ -69,6 +71,7 @@ contract Lottery is VRFConsumerBase, Ownable {
     function endLottery() public onlyOwner {
         lottery_state == LOTTERY_STATE.CALCULATING_WINNER;
         bytes32 requestId = requestRandomness(keyhash, fee, 0);
+        //emit RequestedRandomness(requestId); // this will write logs/event which will be helpfull in upgrading smart contracts
     }
 
     function fulfillRandomness(bytes32 _requesId, uint256 _randomness)

@@ -1,6 +1,7 @@
 from brownie import accounts, network, config
 from brownie import Lottery
 import scripts.helpful_scripts as hp
+import time
 
 
 def deploy_lottery():
@@ -11,7 +12,8 @@ def deploy_lottery():
                    config["networks"][network.show_active()]["fee"],
                    config["networks"][network.show_active()
                                       ]["keyhash"],
-                   {"from": accounts},
+                   # dont do this on mainnet putting gas limit
+                   {"from": accounts, "gasLimit": 100000},
                    publish_source=config["networks"][network.show_active()].get("verify"))
     print("Deployed Lottery!!")
 
@@ -36,7 +38,21 @@ def enter_lotter():
     print("Entered the Lottery!")
 
 
+def end_lottery():
+    accounts = hp.getaccounts()
+    lottery = Lottery[-1]
+    # fund the Contract
+    # then end the lottery
+    transaction = hp.fund_with_link(lottery.address)
+    transaction.wait(1)
+    ending_transaction = lottery.endLottery({"from": accounts})
+    ending_transaction.wait(1)
+    time.sleep(180)
+    print(f"Here is our lottery winner !!!! {lottery.recentWinner}")
+
+
 def main():
     deploy_lottery()
     start_lottery()
     enter_lotter()
+    end_lottery()
