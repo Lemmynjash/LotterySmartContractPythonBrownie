@@ -14,7 +14,7 @@ def deploy_lottery():
                                       ]["keyhash"],
                    # dont do this on mainnet putting gas limit
                    {"from": accounts, "gasLimit": 100000},
-                   publish_source=config["networks"][network.show_active()].get("verify"))
+                   publish_source=config["networks"][network.show_active()].get("verify")) 
     print("Deployed Lottery!!")
 
 
